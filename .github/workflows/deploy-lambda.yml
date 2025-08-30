@@ -39,7 +39,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lambda-artifact
-          path: target/lambda/luminair-core/bootstrap.zip
+          path: |
+            target/lambda/luminair-core/bootstrap.zip
+            samconfig.toml
+            template.yaml
 
   deploy:
     needs: build
