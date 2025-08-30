@@ -25,6 +25,16 @@ jobs:
           target: x86_64-unknown-linux-musl
           cache: 'true'
 
+      - name: Cache cargo-lambda
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/cargo-lambda
+          key: cargo-lambda-${{ hashFiles('Cargo.lock') }}
+          restore-keys: cargo-lambda-
+
+      - name: Install cargo-lambda if not cached
+        run: cargo install cargo-lambda
+
       - name: Build Lambda function
         run: cargo lambda build --release --output-format zip
 
