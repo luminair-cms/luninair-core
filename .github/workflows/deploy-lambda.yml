@@ -12,28 +12,15 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/cargo-lambda/cargo-lambda:latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
         with:
           fetch-depth: 1
 
-      - name: Setup Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: stable
-          target: x86_64-unknown-linux-musl
-          cache: 'true'
-
-      - name: Cache cargo-lambda
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/bin/cargo-lambda
-          key: cargo-lambda-${{ hashFiles('Cargo.lock') }}
-          restore-keys: cargo-lambda-
-
-      - name: Install cargo-lambda if not cached
-        run: cargo install cargo-lambda
+      - uses: Swatinem/rust-cache@v2
 
       - name: Build Lambda function
         run: cargo lambda build --release --output-format zip
