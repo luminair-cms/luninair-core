@@ -1,0 +1,70 @@
+name: Deploy AWS Lambda
+
+on:
+  push:
+    branches: 
+      - main
+
+env:
+  CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse  # Faster crate downloads
+  CARGO_NET_GIT_FETCH_WITH_CLI: true           # Faster git dependencies
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/cargo-lambda/cargo-lambda:latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Build Lambda function
+        run: cargo lambda build --release --output-format zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lambda-artifact
+          path: target/lambda/luminair-core/bootstrap.zip
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # Required for OIDC authentication
+      contents: read  # Required to check out the repository
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: lambda-artifact
+
+      - name: setup-sam
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::377161178071:role/DeployFunctionsFromGitHub_Luminair_cms
+          audience: sts.amazonaws.com
+          aws-region: us-east-1
+
+      - name: deploy
+        run: sam deploy --no-confirm-changeset --no-fail-on-empty-changeset
